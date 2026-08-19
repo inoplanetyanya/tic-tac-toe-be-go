@@ -16,12 +16,15 @@ func main() {
 		log.Fatalf("Ошибка загрузки .env файла: %s", err.Error())
 	}
 
-	dbhost := os.Getenv("DB_URL")
+	dbhost := os.Getenv("DB_HOST")
 	dbport := os.Getenv("DB_PORT")
 	dbuser := os.Getenv("DB_USER")
 	dbpassword := os.Getenv("DB_PASSWORD")
+	dbname := os.Getenv("DB_NAME")
+	dbsslmode := os.Getenv("DB_SSLMODE")
 
-	dbURL := fmt.Sprintf("postgres://%s:%s@%s:%s/postgres?sslmode=disable", dbuser, dbpassword, dbhost, dbport)
+	dbURL := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
+		dbuser, dbpassword, dbhost, dbport, dbname, dbsslmode)
 
 	m, err := migrate.New(
 		"file://migrations",
