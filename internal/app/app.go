@@ -45,9 +45,10 @@ func Run() {
 	services := service.NewService(repos)
 	handlers := handler.NewHandler(services)
 
+	serverhost := os.Getenv("SERVER_HOST")
 	porthttp := os.Getenv("PORT_HTTP")
 	serverhttp := &http.Server{
-		Addr:    fmt.Sprintf("192.168.0.69:%s", porthttp),
+		Addr:    fmt.Sprintf("%s:%s", serverhost, porthttp),
 		Handler: handlers.InitRoutes(),
 	}
 
@@ -56,7 +57,7 @@ func Run() {
 
 	go func() {
 		defer wg.Done()
-		log.Printf("HTTP-сервер запущен на http://192.168.0.69:%s", porthttp)
+		log.Printf("HTTP-сервер запущен на http://%s:%s", serverhost, porthttp)
 		if err := serverhttp.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Ошибка запуска HTTP-сервера: %s", err.Error())
 		}
