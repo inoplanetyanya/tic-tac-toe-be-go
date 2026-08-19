@@ -24,7 +24,7 @@ func NewGameRoom() *GameRoom {
 		Players:   make(map[*websocket.Conn]User),
 		Mu:        sync.Mutex{},
 		RoomUUID:  uuid.NewString(),
-		BoardSize: 10,
+		BoardSize: 3,
 		Started:   false,
 		Ended:     false,
 	}
