@@ -37,7 +37,7 @@ func (g *GameRoom) AddPlayer(user User, conn *websocket.Conn) {
 	g.Players[conn] = user
 
 	for _, p := range g.Players {
-		if p == g.Players[conn] {
+		if p.Id == g.Players[conn].Id {
 			log.Printf("[gr] user %v already in room %s\n", p, g.RoomUUID)
 		}
 		return
@@ -53,10 +53,17 @@ func (g *GameRoom) RemovePlayer(conn *websocket.Conn) {
 	user := g.Players[conn]
 	delete(g.Players, conn)
 
+	var username string
+	if user.Username != nil {
+		username = *user.Username
+	} else {
+		username = "Anonymous"
+	}
+
 	if len(g.Players) > 0 {
 		chatMsg := ChatMessage{
 			From:    "server",
-			Message: fmt.Sprintf("user %s removed from game room", user.Username),
+			Message: fmt.Sprintf("user %s removed from game room", username),
 			Type:    "chat",
 		}
 
@@ -138,9 +145,15 @@ func (g *GameRoom) Chat(from *websocket.Conn, msg string) {
 	defer g.Mu.Unlock()
 
 	fromUser := g.Players[from]
+	var username string
+	if fromUser.Username != nil {
+		username = *fromUser.Username
+	} else {
+		username = "Anonymous"
+	}
 
 	chatMsg := ChatMessage{
-		From:    fromUser.Username,
+		From:    username,
 		Message: string(msg),
 		Type:    "chat",
 	}

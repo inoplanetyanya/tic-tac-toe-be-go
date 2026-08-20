@@ -1,17 +1,18 @@
 package service
 
 import (
-	"battleship/pkg/common"
-	"battleship/pkg/repository"
+	"tic-tac-toe/pkg/common"
+	"tic-tac-toe/pkg/repository"
 )
 
-type Authorization interface {
-	CreateUser(user common.User) (int, error)
-	GetUser(username, password string) (common.User, error)
-	UserExist(username string) (common.User, error)
+type Auth interface {
+	CreateUser(user common.UserToCreate) (int, error)
+	GetUserByUsernameAndPassword(username, password string) (common.User, error)
+	GetUserByEmailAndPassword(email, password string) (common.User, error)
+	GetUserFromToken(token string) (common.User, error)
+	FindUserByIdentity(identity string) (common.User, error)
 	GenerateToken(username, password string) (string, error)
 	ParseToken(token string) (int, error)
-	GetUserByToken(token string) (common.User, error)
 }
 
 type Game interface {
@@ -23,13 +24,13 @@ type Game interface {
 }
 
 type Service struct {
-	Authorization
+	Auth
 	Game
 }
 
 func NewService(repos *repository.Repository) *Service {
 	return &Service{
-		Authorization: NewAuthService(repos.AuthRepository),
-		Game:          NewGameService(),
+		Auth: NewAuthService(repos.AuthRepository),
+		Game: NewGameService(),
 	}
 }

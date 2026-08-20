@@ -1,26 +1,45 @@
 package service
 
 import (
-	"battleship/pkg/common"
-	"battleship/pkg/repository"
 	"crypto/sha1"
 	"errors"
 	"fmt"
+	"log"
+	"os"
+	"strconv"
+	"tic-tac-toe/pkg/common"
+	"tic-tac-toe/pkg/repository"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
-const (
-	salt       = "hjqrhjqw124617ajfhajs"
-	signingKey = "qrkjk#4#%35FSFJlja#4353KSFjH"
-	tokenTTL   = 12 * time.Hour
+func getTokenTtlHours() time.Duration {
+	ttlStr := os.Getenv("TOKEN_TTL_HOURS")
+	if ttlStr == "" {
+		log.Fatal("TOKEN_TTL_HOURS is not provided via evn")
+	}
+
+	ttlHours, err := strconv.Atoi(ttlStr)
+	if err != nil {
+		log.Fatalf("TOKEN_TTL_HOURS parsing error '%s': '%v'", ttlStr, err)
+	}
+
+	return time.Duration(ttlHours) * time.Hour
+}
+
+var (
+	salt       = os.Getenv("TOKEN_SALT")
+	signingKey = os.Getenv("TOKEN_SIGNING_KEY")
+	tokenTTL   = getTokenTtlHours()
 )
 
 type tokenClaims struct {
 	jwt.RegisteredClaims
-	UserId   int    `json:"user_id"`
-	Username string `json:"username"`
+	UserId   int      `json:"user_id"`
+	Username *string  `json:"username"`
+	Email    string   `json:"email"`
+	Roles    []string `json:"roles"`
 }
 
 type AuthService struct {
@@ -31,7 +50,7 @@ func NewAuthService(repo repository.AuthRepository) *AuthService {
 	return &AuthService{repo: repo}
 }
 
-func (s *AuthService) CreateUser(user common.User) (int, error) {
+func (s *AuthService) CreateUser(user common.UserToCreate) (int, error) {
 	if s.repo == nil {
 		return 0, errors.New("repository is not initialized")
 	}
@@ -39,7 +58,7 @@ func (s *AuthService) CreateUser(user common.User) (int, error) {
 	return s.repo.CreateUser(user)
 }
 
-func (s *AuthService) GetUser(username, password string) (common.User, error) {
+func (s *AuthService) GetUserByUsernameAndPassword(username, password string) (common.User, error) {
 	var user common.User
 
 	if s.repo == nil {
@@ -47,7 +66,7 @@ func (s *AuthService) GetUser(username, password string) (common.User, error) {
 	}
 
 	password_hash := generatePasswordHash(password)
-	user, err := s.repo.GetUser(username, password_hash)
+	user, err := s.repo.GetUserByUsernameAndPassword(username, password_hash)
 
 	if err != nil {
 		return user, err
@@ -56,12 +75,29 @@ func (s *AuthService) GetUser(username, password string) (common.User, error) {
 	return user, nil
 }
 
-func (s *AuthService) UserExist(username string) (common.User, error) {
+func (s *AuthService) GetUserByEmailAndPassword(email, password string) (common.User, error) {
+	var user common.User
+
+	if s.repo == nil {
+		return user, errors.New("repository is not initialized")
+	}
+
+	password_hash := generatePasswordHash(password)
+	user, err := s.repo.GetUserByEmailAndPassword(email, password_hash)
+
+	if err != nil {
+		return user, err
+	}
+
+	return user, nil
+}
+
+func (s *AuthService) FindUserByIdentity(identity string) (common.User, error) {
 	if s.repo == nil {
 		return common.User{}, errors.New("repository is not initialized")
 	}
 
-	user, err := s.repo.UserExist(username)
+	user, err := s.repo.FindUserByIdentity(identity)
 	if err != nil && err.Error() != "user not found" {
 		return common.User{}, err
 	}
@@ -77,7 +113,7 @@ func generatePasswordHash(password string) string {
 }
 
 func (s *AuthService) GenerateToken(username, password string) (string, error) {
-	user, err := s.repo.GetUser(username, generatePasswordHash(password))
+	user, err := s.repo.GetUserByUsernameAndPassword(username, generatePasswordHash(password))
 	if err != nil {
 		return "", err
 	}
@@ -119,7 +155,7 @@ func (s *AuthService) ParseToken(accessToken string) (int, error) {
 	return claims.UserId, nil
 }
 
-func (s *AuthService) GetUserByToken(accessToken string) (common.User, error) {
+func (s *AuthService) GetUserFromToken(accessToken string) (common.User, error) {
 	token, err := jwt.ParseWithClaims(accessToken, &tokenClaims{}, func(token *jwt.Token) (interface{}, error) {
 		return []byte(signingKey), nil
 	})
@@ -143,6 +179,7 @@ func (s *AuthService) GetUserByToken(accessToken string) (common.User, error) {
 	user := common.User{
 		Id:       claims.UserId,
 		Username: claims.Username,
+		Email:    claims.Email,
 	}
 
 	return user, nil

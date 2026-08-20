@@ -1,7 +1,7 @@
 package main
 
 import (
-	"battleship/internal/app"
+	"tic-tac-toe/internal/app"
 )
 
 func main() {

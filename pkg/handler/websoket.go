@@ -1,13 +1,13 @@
 package handler
 
 import (
-	"battleship/pkg/common"
-	"battleship/pkg/service"
 	"errors"
 	"io"
 	"log"
 	"net/http"
 	"strings"
+	"tic-tac-toe/pkg/common"
+	"tic-tac-toe/pkg/service"
 
 	"golang.org/x/net/websocket"
 )
@@ -68,7 +68,7 @@ func (h *WebSocketHandler) readLoop(ws *websocket.Conn) {
 			continue
 		}
 
-		userId, err := h.service.Authorization.ParseToken(sm[1])
+		userId, err := h.service.Auth.ParseToken(sm[1])
 		if err != nil {
 			log.Println("[ws] Token parse error:", err)
 			continue
@@ -76,7 +76,7 @@ func (h *WebSocketHandler) readLoop(ws *websocket.Conn) {
 		log.Printf("[ws] message from user with id %d: %s\n", userId, msg)
 
 		if sm[0] == "/connect" {
-			user, err := h.service.Authorization.GetUserByToken(sm[1])
+			user, err := h.service.Auth.GetUserFromToken(sm[1])
 			if err != nil {
 				log.Println("[ws] GetUserByToken error:", err)
 				continue
@@ -95,7 +95,7 @@ func (h *WebSocketHandler) readLoop(ws *websocket.Conn) {
 		}
 
 		if sm[0] == "/disconnect" {
-			user, err := h.service.Authorization.GetUserByToken(sm[1])
+			user, err := h.service.Auth.GetUserFromToken(sm[1])
 			if err != nil {
 				log.Println("[ws] GetUserByToken error:", err)
 				continue

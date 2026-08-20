@@ -1,14 +1,14 @@
 package app
 
 import (
-	"battleship/pkg/handler"
-	"battleship/pkg/repository"
-	"battleship/pkg/service"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"sync"
+	"tic-tac-toe/pkg/handler"
+	"tic-tac-toe/pkg/repository"
+	"tic-tac-toe/pkg/service"
 
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/joho/godotenv"
