@@ -1,8 +1,9 @@
 package handler
 
 import (
-	"battleship/pkg/service"
 	"net/http"
+	"tic-tac-toe/pkg/handler/auth"
+	"tic-tac-toe/pkg/service"
 )
 
 type Handler struct {
@@ -16,7 +17,7 @@ func NewHandler(services *service.Service) *Handler {
 func (h *Handler) InitRoutes() http.Handler {
 	router := http.NewServeMux()
 
-	authHandler := NewHandlerAuth(h.services)
+	authHandler := auth.NewHandler(h.services)
 	authHandler.InitRoutes(router)
 
 	wsHandler := NewWebSocketHandler(h.services)

@@ -1,10 +1,10 @@
 package handler
 
 import (
-	"battleship/pkg/service"
 	"encoding/json"
 	"log"
 	"net/http"
+	"tic-tac-toe/pkg/service"
 )
 
 type UnknownPathsHandler struct {

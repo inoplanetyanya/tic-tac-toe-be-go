@@ -1,9 +1,9 @@
 package service
 
 import (
-	"battleship/pkg/common"
 	"errors"
 	"log"
+	"tic-tac-toe/pkg/common"
 )
 
 type GameService struct {
