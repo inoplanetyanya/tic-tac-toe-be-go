@@ -33,13 +33,13 @@ func validateRequestBody(req SignInRequest) error {
 	return nil
 }
 
-func (h *HandlerAuth) SignIn(w http.ResponseWriter, r *http.Request) {
-	defer logStartEnd("signin")()
+func (h *HandlerAuth) Login(w http.ResponseWriter, r *http.Request) {
+	defer logStartEnd("login")()
 
 	var body SignInRequest
 
 	writeResponseWithMessage := func(message string) {
-		writeErrorResponse(w, http.StatusBadRequest, message, "[signin] "+message)
+		writeErrorResponse(w, http.StatusBadRequest, message, "[login] "+message)
 	}
 
 	err := json.NewDecoder(r.Body).Decode(&body)
@@ -48,7 +48,7 @@ func (h *HandlerAuth) SignIn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("[signin] json decode success")
+	log.Println("[login] json decode success")
 
 	// meaningful?
 	err = validateRequestBody(body)
@@ -57,7 +57,7 @@ func (h *HandlerAuth) SignIn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("[signin] payload is correct")
+	log.Println("[login] payload is correct")
 
 	var getUserMethod func(identity string, password string) (common.User, error)
 

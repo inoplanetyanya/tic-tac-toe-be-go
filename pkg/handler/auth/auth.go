@@ -18,8 +18,8 @@ func NewHandler(services *service.Service) *HandlerAuth {
 }
 
 func (h *HandlerAuth) InitRoutes(router *http.ServeMux) {
-	router.HandleFunc(routes.Auth.SignUp.Path, h.signUp)
-	router.HandleFunc(routes.Auth.SignIn.Path, h.SignIn)
+	router.HandleFunc(routes.Auth.Register.Path, h.Register)
+	router.HandleFunc(routes.Auth.Login.Path, h.Login)
 }
 
 type ResponseSuccess struct {

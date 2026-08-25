@@ -17,21 +17,21 @@ type SingUpRequest struct {
 	PasswordConfirm string  `json:"passwordConfirm"`
 }
 
-func (h *HandlerAuth) signUp(w http.ResponseWriter, r *http.Request) {
-	defer logStartEnd("signup")()
+func (h *HandlerAuth) Register(w http.ResponseWriter, r *http.Request) {
+	defer logStartEnd("register")()
 
 	var body SingUpRequest
 
 	err := json.NewDecoder(r.Body).Decode(&body)
 	if err != nil {
-		writeErrorResponse(w, http.StatusInternalServerError, err.Error(), "[signup] "+err.Error())
+		writeErrorResponse(w, http.StatusInternalServerError, err.Error(), "[register] "+err.Error())
 		return
 	}
 
-	log.Println("[signup] json decode success")
+	log.Println("[register] json decode success")
 
 	writeResponseWithMessage := func(message string) {
-		writeErrorResponse(w, http.StatusBadRequest, message, "[signup] "+message)
+		writeErrorResponse(w, http.StatusBadRequest, message, "[register] "+message)
 	}
 
 	if body.Email == "" {
@@ -65,7 +65,7 @@ func (h *HandlerAuth) signUp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("[signup] payload is correct")
+	log.Println("[register] payload is correct")
 
 	existUser, err := h.services.FindUserByIdentity(body.Email)
 	if err != nil {
@@ -78,7 +78,7 @@ func (h *HandlerAuth) signUp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("[signup] no conflict")
+	log.Println("[register] no conflict")
 
 	userID, err := h.services.Auth.CreateUser(common.UserToCreate{
 		Email:    body.Email,
@@ -91,7 +91,7 @@ func (h *HandlerAuth) signUp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("[signup] user created")
+	log.Println("[register] user created")
 
 	response := newResponseSuccess(
 		common.User{
