@@ -1,7 +1,9 @@
 package auth
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"net/mail"
@@ -69,8 +71,10 @@ func (h *HandlerAuth) Register(w http.ResponseWriter, r *http.Request) {
 
 	existUser, err := h.services.FindUserByIdentity(body.Email)
 	if err != nil {
-		writeResponseWithMessage(err.Error())
-		return
+		if !errors.Is(err, sql.ErrNoRows) {
+			writeResponseWithMessage(err.Error())
+			return
+		}
 	}
 
 	if existUser.Id != 0 {
