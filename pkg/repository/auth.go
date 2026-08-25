@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"tic-tac-toe/pkg/common"
+
+	"github.com/lib/pq"
 )
 
 type AuthPostgres struct {
@@ -19,9 +21,16 @@ func (r *AuthPostgres) CreateUser(user common.UserToCreate) (int, error) {
 	var id int
 	query := fmt.Sprintf("INSERT INTO %s (email, username, password_hash, roles) VALUES ($1, $2, $3, $4) RETURNING id", usersTable)
 
-	defaultRoles := []string{"user"}
+	defaultRoles := pq.Array([]string{"user"})
 
-	row := r.db.QueryRow(query, user.Email, user.Username, user.Password, defaultRoles)
+	queryRowArgs := []any{
+		user.Email,
+		user.Username,
+		user.Password,
+		defaultRoles,
+	}
+
+	row := r.db.QueryRow(query, queryRowArgs...)
 	if err := row.Scan(&id); err != nil {
 		return 0, err
 	}
@@ -34,9 +43,21 @@ func (r *AuthPostgres) GetUserByUsernameAndPassword(username, password_hash stri
 
 	query := fmt.Sprintf("SELECT id, username, email, roles FROM %s WHERE username=$1 AND password_hash=$2", usersTable)
 
-	row := r.db.QueryRow(query, username, password_hash)
+	queryRowArgs := []any{
+		username,
+		password_hash,
+	}
 
-	if err := row.Scan(&user.Id, &user.Username); err != nil {
+	row := r.db.QueryRow(query, queryRowArgs...)
+
+	scanArgs := []any{
+		&user.Id,
+		&user.Email,
+		&user.Username,
+		pq.Array(&user.Roles),
+	}
+
+	if err := row.Scan(scanArgs...); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return user, fmt.Errorf("user not found")
 		}
@@ -51,9 +72,21 @@ func (r *AuthPostgres) GetUserByEmailAndPassword(email, password_hash string) (c
 
 	query := fmt.Sprintf("SELECT id, username, email, roles  FROM %s WHERE email=$1 AND password_hash=$2", usersTable)
 
-	row := r.db.QueryRow(query, email, password_hash)
+	queryRowArgs := []any{
+		email,
+		password_hash,
+	}
 
-	if err := row.Scan(&user.Id, &user.Username); err != nil {
+	row := r.db.QueryRow(query, queryRowArgs...)
+
+	scanArgs := []any{
+		&user.Id,
+		&user.Email,
+		&user.Username,
+		pq.Array(&user.Roles),
+	}
+
+	if err := row.Scan(scanArgs...); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return user, fmt.Errorf("user not found")
 		}
@@ -70,7 +103,14 @@ func (r *AuthPostgres) FindUserByIdentity(identity string) (common.User, error) 
 
 	row := r.db.QueryRow(query, identity)
 
-	if err := row.Scan(&user.Id, &user.Email, &user.Username, &user.Roles); err != nil {
+	scanArgs := []any{
+		&user.Id,
+		&user.Email,
+		&user.Username,
+		pq.Array(&user.Roles),
+	}
+
+	if err := row.Scan(scanArgs...); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return user, fmt.Errorf("user not found")
 		}
