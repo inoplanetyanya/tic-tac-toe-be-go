@@ -7,7 +7,7 @@ import (
 )
 
 type Auth interface {
-	CreateUser(user common.UserToCreate) (int, error)
+	CreateUser(user common.UserToCreate) (common.User, error)
 	GetUserByUsernameAndPassword(username, password string) (common.User, error)
 	GetUserByEmailAndPassword(email, password string) (common.User, error)
 	GetUserFromToken(token string) (common.User, error)

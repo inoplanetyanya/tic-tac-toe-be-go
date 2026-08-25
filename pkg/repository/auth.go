@@ -19,29 +19,26 @@ func NewAuthPostgres(db *sql.DB) *AuthPostgres {
 	return &AuthPostgres{db: db}
 }
 
-func (r *AuthPostgres) CreateUser(user common.UserToCreate) (int, error) {
-	var id int
+func (r *AuthPostgres) CreateUser(userToCreate common.UserToCreate) (common.User, error) {
 	query := fmt.Sprintf(
-		"INSERT INTO %s %s VALUES ($1, $2, $3, $4) RETURNING id",
+		"INSERT INTO %s %s VALUES ($1, $2, $3, $4) RETURNING %s",
 		usersTable,
 		userInsertFields,
+		userSelectFields,
 	)
 
-	defaultRoles := pq.Array([]string{"user"})
+	defaultRoles := pq.Array([]string{"User"})
 
 	queryRowArgs := []any{
-		user.Email,
-		user.Username,
-		user.Password,
+		userToCreate.Email,
+		userToCreate.Username,
+		userToCreate.Password,
 		defaultRoles,
 	}
 
 	row := r.db.QueryRow(query, queryRowArgs...)
-	if err := row.Scan(&id); err != nil {
-		return 0, err
-	}
 
-	return id, nil
+	return scanToUser(row)
 }
 
 func (r *AuthPostgres) GetUserByUsernameAndPassword(username, password_hash string) (common.User, error) {

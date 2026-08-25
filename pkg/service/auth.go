@@ -51,12 +51,15 @@ func NewAuthService(repo repository.AuthRepository) *AuthService {
 	return &AuthService{repo: repo}
 }
 
-func (s *AuthService) CreateUser(user common.UserToCreate) (int, error) {
+func (s *AuthService) CreateUser(userToCreate common.UserToCreate) (common.User, error) {
+	var user common.User
+
 	if s.repo == nil {
-		return 0, errors.New("repository is not initialized")
+		return user, errors.New("repository is not initialized")
 	}
-	user.Password = generatePasswordHash(user.Password)
-	return s.repo.CreateUser(user)
+
+	userToCreate.Password = generatePasswordHash(userToCreate.Password)
+	return s.repo.CreateUser(userToCreate)
 }
 
 func (s *AuthService) GetUserByUsernameAndPassword(username, password string) (common.User, error) {

@@ -10,8 +10,6 @@ import (
 	"tic-tac-toe/pkg/common"
 )
 
-type SingUpResponse struct{}
-
 type SingUpRequest struct {
 	Email           string  `json:"email"`
 	Username        *string `json:"username"`
@@ -84,7 +82,7 @@ func (h *HandlerAuth) Register(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("[register] no conflict")
 
-	userID, err := h.services.Auth.CreateUser(common.UserToCreate{
+	user, err := h.services.Auth.CreateUser(common.UserToCreate{
 		Email:    body.Email,
 		Username: body.Username,
 		Password: body.Password,
@@ -97,20 +95,10 @@ func (h *HandlerAuth) Register(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("[register] user created")
 
-	response := newResponseSuccess(
-		common.User{
-			Id:       userID,
-			Username: body.Username,
-			Email:    body.Email,
-			Roles:    []string{"User"},
-		},
-		"User registered successfully",
-	)
-
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusCreated)
 
-	if err := json.NewEncoder(w).Encode(response); err != nil {
+	if err := json.NewEncoder(w).Encode(user); err != nil {
 		writeResponseWithMessage(err.Error())
 		return
 	}
