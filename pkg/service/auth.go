@@ -1,7 +1,7 @@
 package service
 
 import (
-	"crypto/sha1"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"log"
@@ -106,14 +106,17 @@ func (s *AuthService) FindUserByIdentity(identity string) (common.User, error) {
 }
 
 func generatePasswordHash(password string) string {
-	hash := sha1.New()
-	hash.Write([]byte(password))
+	hash := sha256.New()
 
-	return fmt.Sprintf("%x", hash.Sum([]byte(salt)))
+	hash.Write([]byte(password))
+	hash.Write([]byte(salt))
+
+	return fmt.Sprintf("%x", hash.Sum(nil))
 }
 
 func (s *AuthService) GenerateToken(username, password string) (string, error) {
-	user, err := s.repo.GetUserByUsernameAndPassword(username, generatePasswordHash(password))
+	hash := generatePasswordHash(password)
+	user, err := s.repo.GetUserByUsernameAndPassword(username, hash)
 	if err != nil {
 		return "", err
 	}
