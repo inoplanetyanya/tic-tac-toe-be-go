@@ -2,6 +2,7 @@ package service
 
 import (
 	"crypto/sha256"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log"
@@ -98,11 +99,8 @@ func (s *AuthService) FindUserByIdentity(identity string) (common.User, error) {
 	}
 
 	user, err := s.repo.FindUserByIdentity(identity)
-	if err != nil && err.Error() != "user not found" {
-		return common.User{}, err
-	}
 
-	return user, nil
+	return user, err
 }
 
 func generatePasswordHash(password string) string {
@@ -114,11 +112,24 @@ func generatePasswordHash(password string) string {
 	return fmt.Sprintf("%x", hash.Sum(nil))
 }
 
-func (s *AuthService) GenerateToken(username, password string) (string, error) {
-	hash := generatePasswordHash(password)
-	user, err := s.repo.GetUserByUsernameAndPassword(username, hash)
+func (s *AuthService) GenerateToken(identity, password string) (common.User, string, error) {
+	user, err := s.repo.FindUserByIdentity(identity)
 	if err != nil {
-		return "", err
+		if errors.Is(err, sql.ErrNoRows) {
+			log.Printf("user '%s' does not exist", identity)
+			return user, "", ErrInvalidCredentials
+		}
+		return user, "", err
+	}
+
+	hash := generatePasswordHash(password)
+	user, err = s.repo.GetUserByEmailAndPassword(user.Email, hash)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			log.Printf("[WARN] login attempt failed: incorrect password for user '%s'", identity)
+			return user, "", ErrInvalidCredentials
+		}
+		return user, "", err
 	}
 
 	claims := jwt.MapClaims{
@@ -129,8 +140,12 @@ func (s *AuthService) GenerateToken(username, password string) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	signedToken, err := token.SignedString([]byte(signingKey))
+	if err != nil {
+		return user, "", fmt.Errorf("failed to sign token: %w", err)
+	}
 
-	return token.SignedString([]byte(signingKey))
+	return user, signedToken, nil
 }
 
 // TODO rename(?)

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"tic-tac-toe/pkg/common"
 	"tic-tac-toe/pkg/repository"
 )
@@ -11,7 +12,7 @@ type Auth interface {
 	GetUserByEmailAndPassword(email, password string) (common.User, error)
 	GetUserFromToken(token string) (common.User, error)
 	FindUserByIdentity(identity string) (common.User, error)
-	GenerateToken(username, password string) (string, error)
+	GenerateToken(username, password string) (common.User, string, error)
 	ParseToken(token string) (int, error)
 }
 
@@ -34,3 +35,5 @@ func NewService(repos *repository.Repository) *Service {
 		Game: NewGameService(),
 	}
 }
+
+var ErrInvalidCredentials = errors.New("invalid username or password")

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"errors"
 	"tic-tac-toe/pkg/common"
 )
 
@@ -21,3 +22,5 @@ func NewRepository(db *sql.DB) *Repository {
 		AuthRepository: NewAuthPostgres(db),
 	}
 }
+
+var ErrUserNotFound = errors.New("user not found")

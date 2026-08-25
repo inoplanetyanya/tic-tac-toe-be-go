@@ -3,10 +3,10 @@ package auth
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
-	"strings"
-	"tic-tac-toe/pkg/common"
+	"tic-tac-toe/pkg/service"
 )
 
 type SingInResponse struct {
@@ -38,13 +38,17 @@ func (h *HandlerAuth) Login(w http.ResponseWriter, r *http.Request) {
 
 	var body SignInRequest
 
-	writeResponseWithMessage := func(message string) {
+	writeBadRequestWithMessage := func(message string) {
 		writeErrorResponse(w, http.StatusBadRequest, message, "[login] "+message)
+	}
+
+	writeUnauthorizedWithMessage := func(message string) {
+		writeErrorResponse(w, http.StatusUnauthorized, message, "[login] "+message)
 	}
 
 	err := json.NewDecoder(r.Body).Decode(&body)
 	if err != nil {
-		writeResponseWithMessage(err.Error())
+		writeBadRequestWithMessage(err.Error())
 		return
 	}
 
@@ -53,38 +57,32 @@ func (h *HandlerAuth) Login(w http.ResponseWriter, r *http.Request) {
 	// meaningful?
 	err = validateRequestBody(body)
 	if err != nil {
-		writeResponseWithMessage("Fields 'identity'(username or email) and 'password' are required")
+		writeBadRequestWithMessage("Fields 'identity'(username or email) and 'password' are required")
 		return
 	}
 
 	log.Println("[login] payload is correct")
 
-	var getUserMethod func(identity string, password string) (common.User, error)
-
-	// TODO better way to check if identity is email or username?
-	if strings.Contains(body.Identity, "@") {
-		getUserMethod = h.services.GetUserByEmailAndPassword
-	} else {
-		getUserMethod = h.services.GetUserByUsernameAndPassword
-	}
-
-	user, err := getUserMethod(body.Identity, body.Password)
-
+	user, token, err := h.services.GenerateToken(body.Identity, body.Password)
 	if err != nil {
-		writeResponseWithMessage(err.Error())
-		return
-	}
+		if errors.Is(err, service.ErrInvalidCredentials) {
+			writeUnauthorizedWithMessage(err.Error())
+			return
+		}
 
-	token, err := h.services.GenerateToken(body.Identity, body.Password)
-	if err != nil {
-		writeResponseWithMessage(err.Error())
+		message := "internal server error"
+		logMessage := fmt.Sprintf("[login][ERROR] login failed due to system error: %v", err)
+
+		w.WriteHeader(http.StatusInternalServerError)
+		writeErrorResponse(w, http.StatusInternalServerError, message, logMessage)
+
 		return
 	}
 
 	response := newResponseSuccessWithToken(user, "successfully signed in", token)
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		writeResponseWithMessage(err.Error())
+		writeBadRequestWithMessage(err.Error())
 		return
 	}
 }
