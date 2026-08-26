@@ -2,10 +2,14 @@ package repository
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"tic-tac-toe/pkg/common"
+
+	"github.com/lib/pq"
 )
+
+const userSelectFields = "id, email, username, roles"
+const userInsertFields = "(email, username, password_hash, roles)"
 
 type AuthPostgres struct {
 	db *sql.DB
@@ -15,67 +19,85 @@ func NewAuthPostgres(db *sql.DB) *AuthPostgres {
 	return &AuthPostgres{db: db}
 }
 
-func (r *AuthPostgres) CreateUser(user common.UserToCreate) (int, error) {
-	var id int
-	query := fmt.Sprintf("INSERT INTO %s (email, username, password_hash, roles) VALUES ($1, $2, $3, $4) RETURNING id", usersTable)
+func (r *AuthPostgres) CreateUser(userToCreate common.UserToCreate) (common.User, error) {
+	query := fmt.Sprintf(
+		"INSERT INTO %s %s VALUES ($1, $2, $3, $4) RETURNING %s",
+		usersTable,
+		userInsertFields,
+		userSelectFields,
+	)
 
-	defaultRoles := []string{"user"}
+	defaultRoles := pq.Array([]string{"User"})
 
-	row := r.db.QueryRow(query, user.Email, user.Username, user.Password, defaultRoles)
-	if err := row.Scan(&id); err != nil {
-		return 0, err
+	queryRowArgs := []any{
+		userToCreate.Email,
+		userToCreate.Username,
+		userToCreate.Password,
+		defaultRoles,
 	}
 
-	return id, nil
+	row := r.db.QueryRow(query, queryRowArgs...)
+
+	return scanToUser(row)
 }
 
 func (r *AuthPostgres) GetUserByUsernameAndPassword(username, password_hash string) (common.User, error) {
-	var user common.User
+	query := fmt.Sprintf(
+		"SELECT %s FROM %s WHERE username=$1 AND password_hash=$2",
+		userSelectFields,
+		usersTable,
+	)
 
-	query := fmt.Sprintf("SELECT id, username, email, roles FROM %s WHERE username=$1 AND password_hash=$2", usersTable)
-
-	row := r.db.QueryRow(query, username, password_hash)
-
-	if err := row.Scan(&user.Id, &user.Username); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return user, fmt.Errorf("user not found")
-		}
-		return user, fmt.Errorf("row scan error: %w", err)
+	queryRowArgs := []any{
+		username,
+		password_hash,
 	}
 
-	return user, nil
+	row := r.db.QueryRow(query, queryRowArgs...)
+
+	return scanToUser(row)
 }
 
 func (r *AuthPostgres) GetUserByEmailAndPassword(email, password_hash string) (common.User, error) {
-	var user common.User
+	query := fmt.Sprintf(
+		"SELECT %s FROM %s WHERE email=$1 AND password_hash=$2",
+		userSelectFields,
+		usersTable,
+	)
 
-	query := fmt.Sprintf("SELECT id, username, email, roles  FROM %s WHERE email=$1 AND password_hash=$2", usersTable)
-
-	row := r.db.QueryRow(query, email, password_hash)
-
-	if err := row.Scan(&user.Id, &user.Username); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return user, fmt.Errorf("user not found")
-		}
-		return user, fmt.Errorf("row scan error: %w", err)
+	queryRowArgs := []any{
+		email,
+		password_hash,
 	}
 
-	return user, nil
+	row := r.db.QueryRow(query, queryRowArgs...)
+
+	return scanToUser(row)
 }
 
 func (r *AuthPostgres) FindUserByIdentity(identity string) (common.User, error) {
-	var user common.User
-
-	query := fmt.Sprintf("SELECT id, email, username, roles FROM %s WHERE username=$1 OR email=$1", usersTable)
+	query := fmt.Sprintf(
+		"SELECT %s FROM %s WHERE username=$1 OR email=$1",
+		userSelectFields,
+		usersTable,
+	)
 
 	row := r.db.QueryRow(query, identity)
 
-	if err := row.Scan(&user.Id, &user.Email, &user.Username, &user.Roles); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return user, fmt.Errorf("user not found")
-		}
-		return user, fmt.Errorf("row scan error: %w", err)
+	return scanToUser(row)
+}
+
+func scanToUser(row *sql.Row) (common.User, error) {
+	var user common.User
+
+	scanArgs := []any{
+		&user.Id,
+		&user.Email,
+		&user.Username,
+		pq.Array(&user.Roles),
 	}
 
-	return user, nil
+	err := row.Scan(scanArgs...)
+
+	return user, err
 }

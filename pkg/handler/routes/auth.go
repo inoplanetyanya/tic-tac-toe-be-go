@@ -1,13 +1,22 @@
 package routes
 
-import "net/http"
+import (
+	"net/http"
+	"tic-tac-toe/pkg/common"
+)
 
 type AuthRoutes struct {
-	SignUp Route
-	SignIn Route
+	Register common.ApiRoute
+	Login    common.ApiRoute
 }
 
 var Auth = AuthRoutes{
-	SignUp: Route{Path: "/api/auth/signup", Method: http.MethodPost},
-	SignIn: Route{Path: "/api/auth/signin", Method: http.MethodPost},
+	Register: common.ApiRoute{
+		Path:   "/api/auth/register",
+		Method: http.MethodPost,
+	},
+	Login: common.ApiRoute{
+		Path:   "/api/auth/login",
+		Method: http.MethodPost,
+	},
 }

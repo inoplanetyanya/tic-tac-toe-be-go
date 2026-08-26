@@ -18,62 +18,52 @@ func NewHandler(services *service.Service) *HandlerAuth {
 }
 
 func (h *HandlerAuth) InitRoutes(router *http.ServeMux) {
-	router.HandleFunc(routes.Auth.SignUp.Path, h.signUp)
-	router.HandleFunc(routes.Auth.SignIn.Path, h.SignIn)
+	router.HandleFunc(routes.Auth.Register.Path, h.Register)
+	router.HandleFunc(routes.Auth.Login.Path, h.Login)
 }
 
 type ResponseSuccess struct {
-	UserID   int     `json:"user_id"`
-	Username *string `json:"username"`
-	Message  string  `json:"message"`
-	Success  bool    `json:"success"`
-	Token    string  `json:"access"`
+	User  common.User `json:"user"`
+	Token string      `json:"token_access"`
 }
 
-func newResponseSuccess(user common.User, message string) ResponseSuccess {
+func NewResponseSuccess(user common.User) ResponseSuccess {
 	res := ResponseSuccess{
-		Success:  true,
-		Message:  message,
-		UserID:   user.Id,
-		Username: user.Username,
+		User: user,
 	}
 	return res
 }
 
-func newResponseSuccessWithToken(user common.User, message, token string) ResponseSuccess {
+func NewResponseSuccessWithToken(user common.User, token string) ResponseSuccess {
 	res := ResponseSuccess{
-		Success:  true,
-		Message:  message,
-		UserID:   user.Id,
-		Username: user.Username,
-		Token:    token,
+		User:  user,
+		Token: token,
 	}
 	return res
 }
 
 type ResponseError struct {
-	Message string `json:"message"`
-	Success bool   `json:"success"`
+	Error string `json:"error"`
 }
 
-func newResponseError(message string) ResponseError {
-	res := ResponseError{}
-	res.Success = false
-	res.Message = message
+func NewResponseError(err string) ResponseError {
+	res := ResponseError{
+		Error: err,
+	}
 	return res
 }
 
-func writeErrorResponse(w http.ResponseWriter, statusCode int, message string, logMessage string) {
+func WriteErrorResponse(w http.ResponseWriter, statusCode int, message string, logMessage string) {
 	log.Println(logMessage)
 	w.WriteHeader(statusCode)
-	response := newResponseError(message)
+	response := NewResponseError(message)
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		log.Fatal("[writeErrorResponse] Failed to encode response:", err)
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 	}
 }
 
-func logStartEnd(handlerName string) func() {
+func LogStartEnd(handlerName string) func() {
 	log.Println("[" + handlerName + "] start")
 	return func() {
 		log.Println("[" + handlerName + "] end\n")
