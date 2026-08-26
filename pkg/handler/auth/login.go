@@ -34,16 +34,16 @@ func validateRequestBody(req SignInRequest) error {
 }
 
 func (h *HandlerAuth) Login(w http.ResponseWriter, r *http.Request) {
-	defer logStartEnd("login")()
+	defer LogStartEnd("login")()
 
 	var body SignInRequest
 
 	writeBadRequestWithMessage := func(message string) {
-		writeErrorResponse(w, http.StatusBadRequest, message, "[login] "+message)
+		WriteErrorResponse(w, http.StatusBadRequest, message, "[login] "+message)
 	}
 
 	writeUnauthorizedWithMessage := func(message string) {
-		writeErrorResponse(w, http.StatusUnauthorized, message, "[login] "+message)
+		WriteErrorResponse(w, http.StatusUnauthorized, message, "[login] "+message)
 	}
 
 	err := json.NewDecoder(r.Body).Decode(&body)
@@ -63,6 +63,14 @@ func (h *HandlerAuth) Login(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("[login] payload is correct")
 
+	writeInternalServerError := func(err error) {
+		message := "internal server error"
+		logMessage := fmt.Sprintf("[login][ERROR] login failed due to system error: %v", err)
+
+		w.WriteHeader(http.StatusInternalServerError)
+		WriteErrorResponse(w, http.StatusInternalServerError, message, logMessage)
+	}
+
 	user, token, err := h.services.GenerateToken(body.Identity, body.Password)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidCredentials) {
@@ -70,19 +78,15 @@ func (h *HandlerAuth) Login(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		message := "internal server error"
-		logMessage := fmt.Sprintf("[login][ERROR] login failed due to system error: %v", err)
-
-		w.WriteHeader(http.StatusInternalServerError)
-		writeErrorResponse(w, http.StatusInternalServerError, message, logMessage)
+		writeInternalServerError(err)
 
 		return
 	}
 
-	response := newResponseSuccessWithToken(user, "successfully signed in", token)
+	response := NewResponseSuccessWithToken(user, token)
 
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		writeBadRequestWithMessage(err.Error())
-		return
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		writeInternalServerError(err)
 	}
 }

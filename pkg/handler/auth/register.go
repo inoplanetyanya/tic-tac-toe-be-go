@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"net/mail"
@@ -18,50 +19,58 @@ type SingUpRequest struct {
 }
 
 func (h *HandlerAuth) Register(w http.ResponseWriter, r *http.Request) {
-	defer logStartEnd("register")()
+	defer LogStartEnd("register")()
 
 	var body SingUpRequest
 
+	writeInternalServerError := func(err error) {
+		message := "internal server error"
+		logMessage := fmt.Sprintf("[register][ERROR] register failed due to system error: %v", err)
+
+		w.WriteHeader(http.StatusInternalServerError)
+		WriteErrorResponse(w, http.StatusInternalServerError, message, logMessage)
+	}
+
 	err := json.NewDecoder(r.Body).Decode(&body)
 	if err != nil {
-		writeErrorResponse(w, http.StatusInternalServerError, err.Error(), "[register] "+err.Error())
+		writeInternalServerError(err)
 		return
 	}
 
 	log.Println("[register] json decode success")
 
-	writeResponseWithMessage := func(message string) {
-		writeErrorResponse(w, http.StatusBadRequest, message, "[register] "+message)
+	writeBadRequestWithMessage := func(message string) {
+		WriteErrorResponse(w, http.StatusBadRequest, message, "[register] "+message)
 	}
 
 	if body.Email == "" {
-		writeResponseWithMessage("Email is required")
+		writeBadRequestWithMessage("Email is required")
 		return
 	}
 
 	_, err = mail.ParseAddress(body.Email)
 	if err != nil {
-		writeResponseWithMessage("Email is invalid")
+		writeBadRequestWithMessage("Email is invalid")
 		return
 	}
 
 	if body.Email == "" {
-		writeResponseWithMessage("Email is required")
+		writeBadRequestWithMessage("Email is required")
 		return
 	}
 
 	if body.Password == "" {
-		writeResponseWithMessage("Password is required")
+		writeBadRequestWithMessage("Password is required")
 		return
 	}
 
 	if body.PasswordConfirm == "" {
-		writeResponseWithMessage("PasswordConfirm is required")
+		writeBadRequestWithMessage("PasswordConfirm is required")
 		return
 	}
 
 	if body.Password != body.PasswordConfirm {
-		writeResponseWithMessage("Password and PasswordConfirm are not equal")
+		writeBadRequestWithMessage("Password and PasswordConfirm are not equal")
 		return
 	}
 
@@ -70,13 +79,13 @@ func (h *HandlerAuth) Register(w http.ResponseWriter, r *http.Request) {
 	existUser, err := h.services.FindUserByIdentity(body.Email)
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
-			writeResponseWithMessage(err.Error())
+			writeBadRequestWithMessage(err.Error())
 			return
 		}
 	}
 
 	if existUser.Id != 0 {
-		writeResponseWithMessage("user already exist")
+		writeBadRequestWithMessage("user already exist")
 		return
 	}
 
@@ -89,7 +98,7 @@ func (h *HandlerAuth) Register(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		writeResponseWithMessage(err.Error())
+		writeBadRequestWithMessage(err.Error())
 		return
 	}
 
@@ -98,8 +107,10 @@ func (h *HandlerAuth) Register(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusCreated)
 
-	if err := json.NewEncoder(w).Encode(user); err != nil {
-		writeResponseWithMessage(err.Error())
-		return
+	response := NewResponseSuccess(user)
+
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		writeInternalServerError(err)
 	}
 }
